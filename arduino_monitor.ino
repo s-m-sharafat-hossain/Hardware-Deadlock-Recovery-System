@@ -19,6 +19,7 @@ String alertPid;
 bool alertActive = false;
 
 void onButtonPressed() {
+  // OS Concept: Hardware Interrupt Handling
   unsigned long currentTime = millis();
   if (currentTime - lastInterruptTime > DEBOUNCE_DELAY) {
     buttonPressed = true;
@@ -58,12 +59,18 @@ void showAlert(const String &message) {
   int firstSeparator = message.indexOf('|');
   int secondSeparator = message.indexOf('|', firstSeparator + 1);
   int thirdSeparator = message.indexOf('|', secondSeparator + 1);
+  int fourthSeparator = message.indexOf('|', thirdSeparator + 1);
+  int fifthSeparator = message.indexOf('|', fourthSeparator + 1);
   if (firstSeparator < 0 || secondSeparator < 0 || thirdSeparator < 0) {
     return;
   }
 
   alertPid = message.substring(firstSeparator + 1, secondSeparator);
   String name = message.substring(secondSeparator + 1, thirdSeparator);
+  String state = message.substring(fifthSeparator + 1);
+  
+  // Determine if this is a deadlock or regular freeze
+  bool isDeadlock = state.indexOf("deadlock") >= 0;
   
   // Create visual alert display
   display.clearDisplay();
@@ -77,28 +84,52 @@ void showAlert(const String &message) {
   // Inverted text for header
   display.setTextColor(SSD1306_BLACK);
   display.setCursor(2, 2);
-  display.println("!!! ALERT !!!");
+  if (isDeadlock) {
+    display.println("DEADLOCK");
+  } else {
+    display.println("FROZEN");
+  }
   
   // Reset text color
   display.setTextColor(SSD1306_WHITE);
   
   display.setCursor(2, 20);
-  display.println("FROZEN:");
+  display.println("PROC:");
   display.setCursor(2, 32);
   display.println(name.substring(0, 16));
   
   display.setCursor(2, 48);
   display.println("PID: " + alertPid);
   
-  // Draw X mark
-  display.drawLine(116, 52, 124, 60, SSD1306_WHITE);
-  display.drawLine(124, 52, 116, 60, SSD1306_WHITE);
+  // Draw different indicator for deadlock vs freeze
+  if (isDeadlock) {
+    // Draw D mark for Deadlock
+    display.drawLine(116, 52, 124, 52, SSD1306_WHITE);
+    display.drawLine(116, 56, 124, 56, SSD1306_WHITE);
+    display.drawLine(116, 52, 116, 60, SSD1306_WHITE);
+    display.drawLine(124, 52, 124, 60, SSD1306_WHITE);
+  } else {
+    // Draw X mark for regular freeze
+    display.drawLine(116, 52, 124, 60, SSD1306_WHITE);
+    display.drawLine(124, 52, 116, 60, SSD1306_WHITE);
+  }
   
   display.display();
   
   digitalWrite(RED_LED_PIN, HIGH);
   digitalWrite(GREEN_LED_PIN, LOW);
-  tone(BUZZER_PIN, 2200, 300);
+  
+  // Different buzzer pattern for deadlock
+  if (isDeadlock) {
+    tone(BUZZER_PIN, 2200, 100);
+    delay(150);
+    tone(BUZZER_PIN, 2200, 100);
+    delay(150);
+    tone(BUZZER_PIN, 2200, 100);
+  } else {
+    tone(BUZZER_PIN, 2200, 300);
+  }
+  
   alertActive = true;
 }
 

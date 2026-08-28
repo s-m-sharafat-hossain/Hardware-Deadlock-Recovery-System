@@ -1,24 +1,15 @@
-# 🖥️ Windows Process Freeze Monitor with Arduino Alert System
-A sophisticated process monitoring system that detects frozen Windows applications and provides hardware-based alerts through an Arduino with OLED display, LEDs, and buzzer. The system automatically identifies unresponsive applications and allows for remote termination via a physical button.
+# 🖥️ Hardware-Assisted Deadlock and Process Freeze Detection & Recovery System
 
-## 🎥 Project Demo
+This project aims to develop a hardware-assisted operating system monitoring system capable of detecting frozen applications, unresponsive processes, and potential deadlock situations in real time. A Python-based monitoring service continuously runs in the background of a Windows operating system. The service periodically scans all active processes using operating system APIs and system performance metrics. It identifies applications that become unresponsive ("Not Responding"), remain blocked for an extended period, or exhibit abnormal execution behavior.
 
-<video 
-  src="https://github.com/user-attachments/assets/1b8474a5-d632-4210-93c4-f74908b80f13"
-  controls
-  muted
-  autoplay
-  loop
-  playsinline
-  width="800"
-  height="250">
-</video>
+When such a process is detected, the monitoring service collects its Process ID (PID), process name, CPU usage, memory consumption, and current execution state. This information is transmitted through serial communication to an Arduino Uno. The Arduino functions as an external monitoring dashboard. It displays the process information on a 128x64 OLED, activates LEDs for visual indication, and sounds a buzzer to notify the user. A physical push-button on the Arduino allows the user to acknowledge the alert and request termination of the frozen process.
 
-
+When the button is pressed, the Arduino sends a command back to the host computer via serial communication. The Python application receives the command and safely terminates the selected process using operating system process management functions. The project demonstrates the integration of operating system concepts with embedded hardware, providing a practical solution for monitoring and managing system processes.
 
 ## ✨ Features
 
 - **Real-time Process Monitoring**: Continuously scans Windows processes for frozen/unresponsive applications
+- **Deadlock Detection**: Identifies processes blocked for extended periods (potential deadlock situations)
 - **Hardware Alert System**: Arduino-based alert system with OLED display, LED indicators, and buzzer
 - **Visual Dashboard**: Color-coded console output with detailed process information
 - **Automatic Process Termination**: Safely terminates frozen processes with PID reuse protection
@@ -28,16 +19,17 @@ A sophisticated process monitoring system that detects frozen Windows applicatio
 - **Professional OLED Display**: Custom-designed UI with frames, headers, and status indicators
 - **Button-Based Control**: Physical button to terminate frozen processes
 - **Priority-Based Alerting**: Prioritizes processes by severity and resource usage
+- **Differentiated Alerts**: Visual and audio distinction between freeze and deadlock alerts
 
 ## 🛠️ Hardware Requirements
 
 ### Arduino Components
 - **Arduino Board** (Uno, Nano, or compatible)
-- **OLED Display** (128x64, SSD1306, I2C)
-- **4-Pin Push Button**
-- **Red LED** (for alerts)
-- **Green LED** (for normal status)
-- **Buzzer** (for audio alerts)
+- **OLED Display** (128x64, SSD1306, I2C) - *Professional UI with frames and headers*
+- **4-Pin Push Button** - *Hardware interrupt-based control*
+- **Red LED** (for alerts) - *Visual freeze indicator*
+- **Green LED** (for normal status) - *System health indicator*
+- **Buzzer** (for audio alerts) - *Audible notification system*
 - **Resistors** (220Ω for LEDs, 10kΩ for button pull-up if needed)
 - **Jumper wires and breadboard**
 
@@ -169,25 +161,90 @@ Windows         SendMessage()      Protocol     Status       Control
 ```
 
 ### Detection Process
-1. **Process Scanning**: Python scans all running processes every 3 seconds
-2. **Window Responsiveness**: Uses Windows API to test if application windows respond
-3. **Freeze Detection**: Identifies processes with unresponsive windows
-4. **Alert Generation**: Creates alert with process details (PID, name, CPU, memory)
-5. **Serial Transmission**: Sends alert to Arduino via serial port
-6. **Hardware Alert**: Arduino displays alert on OLED, activates red LED and buzzer
-7. **User Action**: Press button to send KILL command back to Python
-8. **Process Termination**: Python safely terminates the frozen process
-9. **Confirmation**: Arduino shows termination confirmation and returns to normal state
+1. **Process Scanning**: Python scans all running processes every 3 seconds (System Call)
+2. **Process State Determination**: Classifies processes into states (Running, Blocked, Suspended, etc.)
+3. **Deadlock Detection**: Monitors blocked process duration (>30 seconds indicates potential deadlock)
+4. **Window Responsiveness**: Uses Windows API to test if application windows respond (System Call)
+5. **Freeze Detection**: Identifies processes with unresponsive windows as "Not Responding"
+6. **Priority Assignment**: Assigns priority based on state and resource usage (Priority Scheduling)
+7. **Alert Generation**: Creates alert with process details (PID, name, CPU, memory, state)
+8. **Serial Transmission**: Sends alert to Arduino via serial port (IPC)
+9. **Hardware Alert**: Arduino displays alert type (DEADLOCK/FROZEN) on OLED, activates red LED and buzzer
+10. **User Action**: Press button triggers interrupt (Interrupt Handling)
+11. **Command Transmission**: Arduino sends KILL command via serial (IPC)
+12. **Process Termination**: Python safely terminates the problematic process (System Call)
+13. **Confirmation**: Arduino shows termination confirmation and returns to normal state
 
-### OS Concepts Implemented
-- **Process Management**: Monitoring, state tracking, termination
-- **Inter-Process Communication**: Serial protocol between Python and Arduino
-- **Windows API Integration**: Window message handling and enumeration
-- **Interrupt Handling**: Hardware interrupts for button press detection
-- **Memory Management**: Memory usage tracking and reporting
-- **CPU Utilization**: CPU percentage monitoring and priority assignment
-- **Process Scheduling**: Priority-based queue for frozen process handling
-- **Concurrency Control**: Atomic operations and thread safety
+### Operating System Concepts Implemented
+
+#### 1. **Process Management**
+- **Process Creation & Termination**: Uses system calls to create and terminate processes
+- **Process Identification (PID)**: Tracks processes using unique Process IDs
+- **Process Monitoring**: Continuous scanning of running processes using `psutil`
+- **Process Lifecycle Management**: Manages process states from creation to termination
+
+#### 2. **Process States**
+- **Running**: Processes actively using CPU (`psutil.STATUS_RUNNING`)
+- **Ready**: Processes waiting for CPU time
+- **Blocked/Waiting**: Processes waiting for I/O or events (`psutil.STATUS_SLEEPING`)
+- **Suspended**: Processes that are stopped (`psutil.STATUS_STOPPED`)
+- **Terminated**: Processes that have finished execution
+- **Not Responding**: Custom state for frozen/unresponsive applications
+- **Deadlocked**: Processes blocked for extended periods (potential deadlock detection)
+
+#### 3. **Deadlock Detection**
+- **Blocked Duration Tracking**: Monitors how long processes remain in blocked state
+- **Threshold-Based Detection**: Processes blocked >30 seconds flagged as potential deadlock
+- **State Transition Analysis**: Tracks process state changes over time
+- **Resource Wait Monitoring**: Identifies processes waiting for resources unusually long
+- **Heuristic-Based Approach**: Uses time-based heuristics for deadlock detection
+- **Higher Priority Assignment**: Deadlocked processes get priority 100 (highest priority)
+
+#### 4. **Priority Scheduling**
+- **Priority-Based Queue**: Uses Python's `heapq` for priority scheduling
+- **Ready Queue Management**: Implements a ready queue for frozen process handling
+- **Priority Assignment**: 
+  - Priority 80: Processes with unresponsive windows
+  - Priority 100: Processes in stopped state or deadlocked
+- **Resource-Based Scheduling**: Considers CPU and memory usage for priority
+
+#### 5. **Inter-Process Communication (IPC)**
+- **Serial Communication**: UART-based communication between Python and Arduino
+- **Message Protocol**: Custom ASCII protocol (`ALERT|PID|NAME|CPU|MEMORY|STATE`)
+- **Bidirectional Communication**: Python sends alerts, Arduino sends KILL commands
+- **Non-blocking I/O**: Serial communication with timeout for asynchronous operation
+
+#### 6. **Interrupt Handling**
+- **Hardware Interrupts**: Arduino uses `attachInterrupt()` for button press detection
+- **Interrupt Service Routine**: `onButtonPressed()` function handles button interrupts
+- **Debouncing**: Software debouncing to handle contact bounce (50ms delay)
+- **Volatile Variables**: Uses `volatile` keyword for interrupt-modified variables
+- **Atomic Operations**: `noInterrupts()`/`interrupts()` for atomic operations
+
+#### 7. **System Calls**
+- **Process Information Reading**: Uses `psutil` to read process tables and information
+- **Termination Signals**: Sends `SIGKILL` equivalent via `process.kill()`
+- **Windows API Integration**: Uses `SendMessageTimeoutW` for window responsiveness testing
+- **Window Enumeration**: Uses `EnumWindows` to iterate through visible windows
+- **Process ID Mapping**: Maps window handles to process IDs using `GetWindowThreadProcessId`
+
+#### 8. **Asynchronous I/O**
+- **Non-blocking Serial**: Serial communication with timeout (0.2s)
+- **Background Monitoring**: Continuous process scanning without blocking
+- **Event-Driven Architecture**: Button interrupts trigger immediate responses
+- **Concurrent Operations**: Process monitoring and Arduino communication run concurrently
+
+#### 9. **Memory Management**
+- **Memory Usage Tracking**: Monitors RSS (Resident Set Size) memory usage
+- **Memory Conversion**: Converts bytes to MB for human-readable display
+- **Process Memory Info**: Uses `process.info["memory_info"]` for memory statistics
+- **Memory-Based Priority**: Uses memory usage in priority calculations
+
+#### 10. **CPU Utilization**
+- **CPU Percentage Monitoring**: Tracks CPU usage per process
+- **CPU Sampling**: Uses `process.cpu_percent()` with interval sampling
+- **Resource-Based Priority**: Incorporates CPU usage into priority calculations
+- **Load Monitoring**: Continuously monitors system load through process scanning
 
 ## ⚙️ Configuration
 
