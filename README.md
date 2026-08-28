@@ -74,7 +74,7 @@ Install via Arduino IDE Library Manager.
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/process-freeze-monitor.git
+git clone https://github.com/s-m-sharafat-hossain/Hardware-Deadlock-Recovery-System.git
 cd process-freeze-monitor
 ```
 
