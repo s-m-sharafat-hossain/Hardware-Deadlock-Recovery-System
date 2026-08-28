@@ -1,10 +1,19 @@
 # 🖥️ Windows Process Freeze Monitor with Arduino Alert System
 A sophisticated process monitoring system that detects frozen Windows applications and provides hardware-based alerts through an Arduino with OLED display, LEDs, and buzzer. The system automatically identifies unresponsive applications and allows for remote termination via a physical button.
 
-<video autoplay muted loop playsinline width="100%">
-  <source src="https://github.com/user-attachments/assets/1b8474a5-d632-4210-93c4-f74908b80f13" type="video/mp4">
-  Your browser does not support the video tag.
+## 🎥 Project Demo
+
+<video 
+  src="https://github.com/user-attachments/assets/1b8474a5-d632-4210-93c4-f74908b80f13"
+  controls
+  muted
+  autoplay
+  loop
+  playsinline
+  width="800"
+  height="250">
 </video>
+
 
 
 ## ✨ Features
